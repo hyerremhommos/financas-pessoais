@@ -2,7 +2,7 @@
 
 MVP de controle financeiro pessoal, com transações (receitas/despesas) e investimentos, incluindo gráfico de despesas por categoria.
 
-Projeto desenvolvido para consolidar aprendizados de um curso de Node.js puro (sem framework).
+Projeto desenvolvido para consolidar aprendizados de Node.js puro (sem framework).
 
 ## Stack
 
