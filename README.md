@@ -21,6 +21,7 @@ Projeto desenvolvido para consolidar aprendizados de um curso de Node.js puro (s
 ## Como rodar localmente
 
 npm install
+
 node --watch index.ts
 
 Acesse http://localhost:3000
