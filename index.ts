@@ -10,9 +10,15 @@ core.router.use([logger]);
 new FinancasApi(core).init();
 
 core.router.get('/', async (req, res) => {
-    const index = await readFile('./front/index.html', 'utf-8');
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).end(index);
+  const index = await readFile('./front/index.html', 'utf-8');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.status(200).end(index);
+});
+
+core.router.get('/app.js', async (req, res) => {
+  const script = await readFile('./front/app.js', 'utf-8');
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.status(200).end(script);
 });
 
 core.init();
