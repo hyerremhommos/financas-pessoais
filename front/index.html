@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finanças Pessoais App</title>
+
+    <link
+      href="https://cdn.jsdelivr.net/npm/vuetify@2.7.2/dist/vuetify.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <v-app>
+        <v-dialog v-model="modalDelete.show" max-width="400">
+          <v-card>
+            <v-card-title class="text-subtitle-1 font-weight-bold">
+              Confirmar exclusão
+            </v-card-title>
+            <v-card-text>{{ modalDelete.mensagem }}</v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text @click="modalDelete.show = false">Cancelar</v-btn>
+              <v-btn color="error" @click="confirmarExclusao">Excluir</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-app-bar app color="white" elevation="1">
+          <v-icon color="primary" class="mr-2">mdi-wallet</v-icon>
+          <v-toolbar-title class="font-weight-bold primary--text">
+            Finanças Pessoais
+          </v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn text small color="primary" @click="atualizarTudo">
+            <v-icon left small>mdi-refresh</v-icon> Atualizar
+          </v-btn>
+        </v-app-bar>
+
+        <v-main>
+          <v-container>
+            <div class="mb-6">
+              <h1>Finanças Pessoais</h1>
+              <div class="text-body-2 grey--text">
+                Gerencie suas receitas, despesas e investimentos
+              </div>
+            </div>
+
+            <v-row class="mb-6">
+              <v-col cols="12" sm="6" lg="3">
+                <v-card outlined rounded="lg" class="pa-4 blue lighten-5">
+                  <div class="d-flex align-center justify-space-between">
+                    <div>
+                      <div class="text-caption grey--text text--darken-1">
+                        Saldo Atual
+                      </div>
+                      <div
+                        class="text-h6 font-weight-bold"
+                        :class="saldo >= 0 ? 'blue--text text--darken-2' : 'red--text'"
+                      >
+                        {{ formatarDinheiro(saldo) }}
+                      </div>
+                    </div>
+                    <v-avatar color="blue lighten-3" size="40">
+                      <v-icon color="white">mdi-wallet</v-icon>
+                    </v-avatar>
+                  </div>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" sm="6" lg="3">
+                <v-card outlined rounded="lg" class="pa-4 green lighten-5">
+                  <div class="d-flex align-center justify-space-between">
+                    <div>
+                      <div class="text-caption grey--text text--darken-1">
+                        Receitas
+                      </div>
+                      <div
+                        class="text-h6 font-weight-bold green--text text--darken-2"
+                      >
+                        {{ formatarDinheiro(totalReceitas) }}
+                      </div>
+                    </div>
+                    <v-avatar color="green lighten-3" size="40">
+                      <v-icon color="white">mdi-trending-up</v-icon>
+                    </v-avatar>
+                  </div>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" sm="6" lg="3">
+                <v-card outlined rounded="lg" class="pa-4 red lighten-5">
+                  <div class="d-flex align-center justify-space-between">
+                    <div>
+                      <div class="text-caption grey--text text--darken-1">
+                        Despesas
+                      </div>
+                      <div
+                        class="text-h6 font-weight-bold red--text text--darken-2"
+                      >
+                        {{ formatarDinheiro(totalDespesas) }}
+                      </div>
+                    </div>
+                    <v-avatar color="red lighten-3" size="40">
+                      <v-icon color="white">mdi-trending-down</v-icon>
+                    </v-avatar>
+                  </div>
+                </v-card>
+              </v-col>
+
+              <v-col cols="12" sm="6" lg="3">
+                <v-card outlined rounded="lg" class="pa-4 purple lighten-5">
+                  <div class="d-flex align-center justify-space-between">
+                    <div>
+                      <div class="text-caption grey--text text--darken-1">
+                        Patrimônio Investido
+                      </div>
+                      <div
+                        class="text-h6 font-weight-bold purple--text text--darken-2"
+                      >
+                        {{ formatarDinheiro(totalInvestido) }}
+                      </div>
+                    </div>
+                    <v-avatar color="purple lighten-3" size="40">
+                      <v-icon color="white">mdi-chart-line</v-icon>
+                    </v-avatar>
+                  </div>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <v-tabs v-model="tab" class="mb-6">
+              <v-tab>Transações</v-tab>
+              <v-tab>Investimentos</v-tab>
+              <v-tab>Análise</v-tab>
+            </v-tabs>
+
+            <v-tabs-items v-model="tab">
+              <v-tab-item>
+                <!-- TRANSAÇÃO -->
+                <div class="d-flex align-center justify-space-between mb-4">
+                  <div class="text-subtitle-1 font-weight-bold">
+                    Histórico de Transações
+                  </div>
+                  <v-btn color="primary" @click="abrirModalTransacao">
+                    <v-icon left>mdi-plus</v-icon> Nova Transação
+                  </v-btn>
+                </div>
+
+                <v-dialog v-model="modalTransacao" max-width="500" persistent>
+                  <v-card rounded="lg">
+                    <v-card-title
+                      class="pa-6 pb-2 text-subtitle-1 font-weight-bold"
+                    >
+                      {{ editandoId ? "Editar Transação" : "Nova Transação" }}
+                    </v-card-title>
+
+                    <v-card-text class="pa-6 pt-2">
+                      <v-form
+                        ref="formTransacaoRef"
+                        @submit.prevent="salvarTransacao"
+                      >
+                        <v-btn-toggle
+                          v-model="form.tipo"
+                          mandatory
+                          class="mb-4 d-flex"
+                        >
+                          <v-btn
+                            value="receita"
+                            class="flex-grow-1"
+                            :color="form.tipo === 'receita' ? 'success' : ''"
+                            outlined
+                          >
+                            Receita
+                          </v-btn>
+                          <v-btn
+                            value="despesa"
+                            class="flex-grow-1"
+                            :color="form.tipo === 'despesa' ? 'error' : ''"
+                            outlined
+                          >
+                            Despesa
+                          </v-btn>
+                        </v-btn-toggle>
+
+                        <v-text-field
+                          v-model="form.descricao"
+                          label="Descrição"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-text-field
+                          v-model="form.valor"
+                          label="Valor (R$)"
+                          type="number"
+                          step="0.01"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-select
+                          v-model="form.categoria"
+                          :items="categorias"
+                          item-text="label"
+                          item-value="value"
+                          label="Categoria"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-select>
+                        <v-text-field
+                          v-model="form.data"
+                          label="Data"
+                          type="date"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-text-field
+                          v-model="form.observacao"
+                          label="Observações (opcional)"
+                          outlined
+                          dense
+                        ></v-text-field>
+                      </v-form>
+                    </v-card-text>
+
+                    <v-card-actions class="pa-6 pt-0">
+                      <v-spacer></v-spacer>
+                      <v-btn text @click="fecharModalTransacao">Cancelar</v-btn>
+                      <v-btn color="primary" @click="salvarTransacao">
+                        {{ editandoId ? "Atualizar" : "Adicionar" }}
+                      </v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </v-dialog>
+
+                <v-card outlined rounded="lg" class="pa-4 mb-6">
+                  <div
+                    v-if="transacoes.length === 0"
+                    class="text-center grey--text py-10"
+                  >
+                    <v-icon size="48" color="grey lighten-1"
+                      >mdi-swap-horizontal</v-icon
+                    >
+                    <div class="mt-2">Nenhuma transação registrada</div>
+                  </div>
+
+                  <div v-else>
+                    <div
+                      v-for="transacao in transacoes"
+                      :key="transacao.id"
+                      class="d-flex align-center pa-3 mb-2 rounded-lg"
+                      style="border: 1px solid #eee"
+                    >
+                      <v-icon
+                        class="mr-3"
+                        :color="transacao.tipo === 'receita' ? 'success' : 'error'"
+                      >
+                        {{ transacao.tipo === 'receita' ? 'mdi-trending-up' :
+                        'mdi-trending-down' }}
+                      </v-icon>
+
+                      <div class="flex-grow-1">
+                        <div class="font-weight-medium">
+                          {{ transacao.descricao }}
+                        </div>
+                        <div class="text-caption grey--text">
+                          {{ labelCategoria(transacao.categoria) }} • {{
+                          transacao.data }}
+                        </div>
+                      </div>
+
+                      <div
+                        class="font-weight-bold mr-3"
+                        :class="transacao.tipo === 'receita' ? 'success--text' : 'error--text'"
+                      >
+                        {{ transacao.tipo === 'receita' ? '+' : '-' }} {{
+                        formatarDinheiro(transacao.valor) }}
+                      </div>
+
+                      <v-btn icon small @click="editarTransacao(transacao)">
+                        <v-icon small color="grey">mdi-pencil-outline</v-icon>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        small
+                        @click="abrirConfirmacao('transacao', transacao.id, 'Deseja realmente excluir esta transação?')"
+                      >
+                        <v-icon small color="grey">mdi-delete-outline</v-icon>
+                      </v-btn>
+                    </div>
+                  </div>
+                </v-card>
+              </v-tab-item>
+
+              <v-tab-item>
+                <!-- INVESTIMENTO -->
+                <div class="d-flex align-center justify-space-between mb-4">
+                  <div class="text-subtitle-1 font-weight-bold">
+                    Histórico de Investimentos
+                  </div>
+                  <v-btn color="primary" @click="abrirModalInvestimento">
+                    <v-icon left>mdi-plus</v-icon> Novo Investimento
+                  </v-btn>
+                </div>
+
+                <v-dialog
+                  v-model="modalInvestimento"
+                  max-width="500"
+                  persistent
+                >
+                  <v-card rounded="lg">
+                    <v-card-title
+                      class="pa-6 pb-2 text-subtitle-1 font-weight-bold"
+                    >
+                      {{ editandoInvestId ? "Editar Invest" : "Novo Invest" }}
+                    </v-card-title>
+
+                    <v-card-text class="pa-6 pt-2">
+                      <v-form
+                        ref="formInvestimentoRef"
+                        @submit.prevent="salvarInvestimento"
+                      >
+                        <v-text-field
+                          v-model="formInvest.nome"
+                          label="Nome do Investimento"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-select
+                          v-model="formInvest.tipo"
+                          :items="tiposInvestimento"
+                          item-text="label"
+                          item-value="value"
+                          label="Tipo"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-select>
+                        <v-text-field
+                          v-model="formInvest.valor_investimento"
+                          label="Valor Investido (R$)"
+                          type="number"
+                          step="0.01"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-text-field
+                          v-model="formInvest.data_investimento"
+                          label="Data do Investimento"
+                          type="date"
+                          outlined
+                          dense
+                          class="mb-2"
+                          :rules="[rules.obrigatorio]"
+                        ></v-text-field>
+                        <v-text-field
+                          v-model="formInvest.instituicao"
+                          label="Instituição (opcional)"
+                          outlined
+                          dense
+                          class="mb-2"
+                        ></v-text-field>
+                        <v-text-field
+                          v-model="formInvest.observacao"
+                          label="Observações (opcional)"
+                          outlined
+                          dense
+                          class="mb-4"
+                        ></v-text-field>
+                      </v-form>
+                    </v-card-text>
+
+                    <v-card-actions class="pa-6 pt-0">
+                      <v-spacer></v-spacer>
+                      <v-btn text @click="fecharModalInvestimento"
+                        >Cancelar</v-btn
+                      >
+                      <v-btn color="primary" @click="salvarInvestimento">
+                        {{ editandoInvestId ? "Atualizar" : "Adicionar" }}
+                      </v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </v-dialog>
+
+                <v-card outlined rounded="lg" class="pa-4 mb-6">
+                  <div
+                    v-if="investimentos.length === 0"
+                    class="text-center grey--text py-10"
+                  >
+                    <v-icon size="48" color="grey lighten-1"
+                      >mdi-chart-line</v-icon
+                    >
+                    <div class="mt-2">Nenhum investimento registrado</div>
+                  </div>
+
+                  <div v-else>
+                    <div
+                      v-for="invest in investimentos"
+                      :key="invest.id"
+                      class="d-flex align-center pa-3 mb-2 rounded-lg"
+                      style="border: 1px solid #eee"
+                    >
+                      <v-icon class="mr-3" color="deep-purple"
+                        >mdi-chart-line</v-icon
+                      >
+
+                      <div class="flex-grow-1">
+                        <div class="font-weight-medium">{{ invest.nome }}</div>
+                        <div class="text-caption grey--text">
+                          {{ invest.instituicao || 'Sem instituição' }} • {{
+                          invest.data_investimento }}
+                        </div>
+                      </div>
+
+                      <div class="font-weight-bold mr-3">
+                        {{ formatarDinheiro(invest.valor_investimento) }}
+                      </div>
+
+                      <v-btn icon small @click="editarInvestimento(invest)">
+                        <v-icon small color="grey">mdi-pencil-outline</v-icon>
+                      </v-btn>
+                      <v-btn
+                        icon
+                        small
+                        @click="abrirConfirmacao('investimento', invest.id, 'Deseja realmente excluir este investimento?')"
+                      >
+                        <v-icon small color="grey">mdi-delete-outline</v-icon>
+                      </v-btn>
+                    </div>
+                  </div>
+                </v-card>
+              </v-tab-item>
+
+              <v-tab-item>
+                <!-- ANÁLISE -->
+                <div class="text-subtitle-1 font-weight-bold mb-4 mt-6">
+                  Despesas por Categoria
+                </div>
+
+                <v-card outlined rounded="lg" class="pa-4">
+                  <div
+                    v-if="dadosGrafico.length === 0"
+                    class="text-center grey--text py-10"
+                  >
+                    <v-icon size="48" color="grey lighten-1"
+                      >mdi-chart-pie</v-icon
+                    >
+                    <div class="mt-2">Nenhuma despesa registrada</div>
+                  </div>
+
+                  <div
+                    v-else
+                    class="d-flex flex-wrap align-center justify-center"
+                    style="gap: 24px"
+                  >
+                    <svg width="200" height="200" viewBox="0 0 42 42">
+                      <circle
+                        cx="21"
+                        cy="21"
+                        r="15.9"
+                        fill="transparent"
+                        stroke="#f1f5f9"
+                        stroke-width="3"
+                      ></circle>
+                      <circle
+                        v-for="(seg, i) in segmentos"
+                        :key="i"
+                        cx="21"
+                        cy="21"
+                        r="15.9"
+                        fill="transparent"
+                        :stroke="seg.color"
+                        stroke-width="3"
+                        :stroke-dasharray="seg.dash + ' ' + seg.gap"
+                        :stroke-dashoffset="seg.offset"
+                      ></circle>
+                    </svg>
+
+                    <div>
+                      <div
+                        v-for="(item, i) in dadosGrafico"
+                        :key="i"
+                        class="d-flex align-center mb-2"
+                      >
+                        <div
+                          class="rounded mr-2"
+                          :style="{ background: item.color, width: '12px', height: '12px' }"
+                        ></div>
+                        <div>
+                          <div class="text-caption font-weight-medium">
+                            {{ item.label }}
+                          </div>
+                          <div class="text-caption grey--text">
+                            {{ formatarDinheiro(item.value) }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </v-card>
+              </v-tab-item>
+            </v-tabs-items>
+          </v-container>
+        </v-main>
+
+        <v-snackbar
+          v-model="snackbar.show"
+          :color="snackbar.color"
+          timeout="3000"
+          centered
+        >
+          {{ snackbar.text }}
+        </v-snackbar>
+      </v-app>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.7.2/dist/vuetify.min.js"></script>
+
+    <script>
+      new Vue({
+        el: "#app",
+        vuetify: new Vuetify({
+          theme: {
+            themes: {
+              light: {
+                primary: "#1976D2",
+                success: "#22c55e",
+                error: "#ef4444",
+                warning: "#f59e0b",
+              },
+            },
+          },
+        }),
+        data: {
+          tab: 0,
+
+          modalTransacao: false,
+          modalInvestimento: false,
+
+          categoriasReceita: [
+            { value: "salario", label: "Salário" },
+            { value: "freelance", label: "Freelance" },
+            { value: "rendimento", label: "Rendimento" },
+            { value: "presente", label: "Presente" },
+            { value: "outras_receitas", label: "Outros" },
+          ],
+          categoriasDespesa: [
+            { value: "alimentacao", label: "Alimentação" },
+            { value: "transporte", label: "Transporte" },
+            { value: "moradia", label: "Moradia" },
+            { value: "saude", label: "Saúde" },
+            { value: "educacao", label: "Educação" },
+            { value: "lazer", label: "Lazer" },
+            { value: "compras", label: "Compras" },
+            { value: "contas", label: "Contas" },
+            { value: "outras_despesas", label: "Outros" },
+          ],
+
+          transacoes: [],
+          editandoId: null, // null = criando nova transação; número = editando essa transição
+          form: {
+            descricao: "",
+            valor: "",
+            tipo: "receita",
+            categoria: "",
+            data: "",
+            observacao: "",
+          },
+
+          tiposInvestimento: [
+            { value: "acoes", label: "Ações" },
+            { value: "renda_fixa", label: "Renda Fixa" },
+            { value: "cripto", label: "Criptomoedas" },
+            { value: "fundos_imobiliarios", label: "Fundos Imobiliários" },
+            { value: "fundos", label: "Fundos de Investimento" },
+            { value: "poupanca", label: "Poupança" },
+            { value: "outro", label: "Outros" },
+          ],
+
+          investimentos: [],
+          editandoInvestId: null, // null = criando novo investimento; número = editando esse investimento
+          formInvest: {
+            nome: "",
+            tipo: "",
+            valor_investimento: "",
+            data_investimento: "",
+            instituicao: "",
+            observacao: "",
+          },
+
+          snackbar: {
+            show: false,
+            text: "",
+            color: "success",
+          },
+
+          rules: {
+            obrigatorio: (v) =>
+              (v !== null && v !== undefined && v !== "") ||
+              "Campo obrigatório",
+          },
+
+          modalDelete: {
+            show: false,
+            mensagem: "",
+            tipo: null,
+            id: null,
+          },
+        },
+
+        methods: {
+          // Transações
+          async obtemTransacoes() {
+            const response = await fetch("/financas/transacoes");
+            this.transacoes = await response.json();
+          },
+
+          abrirModalTransacao() {
+            this.limparEdicao();
+            this.modalTransacao = true;
+            this.$nextTick(() => {
+              this.$refs.formTransacaoRef.resetValidation();
+            });
+          },
+
+          editarTransacao(transacao) {
+            this.editandoId = transacao.id;
+            this.form = {
+              descricao: transacao.descricao,
+              valor: transacao.valor,
+              tipo: transacao.tipo,
+              categoria: transacao.categoria,
+              data: transacao.data,
+              observacao: transacao.observacao || "",
+            };
+            this.modalTransacao = true;
+            this.$nextTick(() => {
+              this.$refs.formTransacaoRef.resetValidation();
+            });
+          },
+
+          async salvarTransacao() {
+            if (!this.$refs.formTransacaoRef.validate()) {
+              return;
+            }
+
+            const url = this.editandoId
+              ? "/financas/transacao/" + this.editandoId
+              : "/financas/transacao";
+
+            const method = this.editandoId ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+              method,
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                descricao: this.form.descricao,
+                valor: this.form.valor,
+                tipo: this.form.tipo,
+                categoria: this.form.categoria,
+                data: this.form.data,
+                observacao: this.form.observacao || null,
+              }),
+            });
+
+            if (!response.ok) {
+              const erro = await response.json();
+              this.mostrarSnackbar(
+                erro.title || "Erro ao salvar transação",
+                "error",
+              );
+              return;
+            }
+
+            await this.obtemTransacoes();
+            this.mostrarSnackbar(
+              this.editandoId ? "Transação atualizada!" : "Transação criada!",
+            );
+            this.fecharModalTransacao();
+          },
+
+          fecharModalTransacao() {
+            this.modalTransacao = false;
+            this.limparEdicao();
+          },
+
+          limparEdicao() {
+            this.editandoId = null;
+            this.form = {
+              descricao: "",
+              valor: "",
+              tipo: "receita",
+              categoria: "",
+              data: "",
+              observacao: "",
+            };
+          },
+
+          async deletarTransacao(id) {
+            const response = await fetch("/financas/transacao/" + id, {
+              method: "DELETE",
+            });
+
+            if (!response.ok) {
+              const erro = await response.json();
+              this.mostrarSnackbar(
+                erro.title || "Erro ao excluir transação",
+                "error",
+              );
+              return;
+            }
+
+            await this.obtemTransacoes();
+            this.mostrarSnackbar("Transação excluída");
+          },
+
+          // Investimentos
+          async obtemInvestimentos() {
+            const response = await fetch("/financas/investimentos");
+            this.investimentos = await response.json();
+          },
+
+          abrirModalInvestimento() {
+            this.limparEdicaoInvestimento();
+            this.modalInvestimento = true;
+            this.$nextTick(() => {
+              this.$refs.formInvestimentoRef.resetValidation();
+            });
+          },
+
+          editarInvestimento(invest) {
+            this.editandoInvestId = invest.id;
+            this.formInvest = {
+              nome: invest.nome,
+              tipo: invest.tipo,
+              valor_investimento: invest.valor_investimento,
+              data_investimento: invest.data_investimento,
+              instituicao: invest.instituicao || "",
+              observacao: invest.observacao || "",
+            };
+            this.modalInvestimento = true;
+            this.$nextTick(() => {
+              this.$refs.formInvestimentoRef.resetValidation();
+            });
+          },
+
+          async salvarInvestimento() {
+            if (!this.$refs.formInvestimentoRef.validate()) {
+              return;
+            }
+
+            const url = this.editandoInvestId
+              ? "/financas/investimento/" + this.editandoInvestId
+              : "/financas/investimento";
+
+            const method = this.editandoInvestId ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+              method,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                nome: this.formInvest.nome,
+                tipo: this.formInvest.tipo,
+                valor_investimento: this.formInvest.valor_investimento,
+                data_investimento: this.formInvest.data_investimento,
+                instituicao: this.formInvest.instituicao || null,
+                observacao: this.formInvest.observacao || null,
+              }),
+            });
+
+            if (!response.ok) {
+              const erro = await response.json();
+              this.mostrarSnackbar(
+                erro.title || "Erro ao salvar investimento",
+                "error",
+              );
+              return;
+            }
+
+            await this.obtemInvestimentos();
+            this.mostrarSnackbar(
+              this.editandoInvestId
+                ? "Investimento atualizado!"
+                : "Investimento criado!",
+            );
+            this.fecharModalInvestimento();
+          },
+
+          fecharModalInvestimento() {
+            this.modalInvestimento = false;
+            this.limparEdicaoInvestimento();
+          },
+
+          limparEdicaoInvestimento() {
+            this.editandoInvestId = null;
+            this.formInvest = {
+              nome: "",
+              tipo: "",
+              valor_investimento: "",
+              data_investimento: "",
+              instituicao: "",
+              observacao: "",
+            };
+          },
+
+          async deletarInvestimento(id) {
+            const response = await fetch("/financas/investimento/" + id, {
+              method: "DELETE",
+            });
+
+            if (!response.ok) {
+              const erro = await response.json();
+              this.mostrarSnackbar(
+                erro.title || "Erro ao excluir investimento",
+                "error",
+              );
+              return;
+            }
+
+            await this.obtemInvestimentos();
+            this.mostrarSnackbar("Investimento excluído");
+          },
+
+          formatarDinheiro(valor) {
+            return valor.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            });
+          },
+
+          mostrarSnackbar(text, color = "success") {
+            this.snackbar = {
+              show: true,
+              text,
+              color,
+            };
+          },
+
+          abrirConfirmacao(tipo, id, mensagem) {
+            this.modalDelete = {
+              show: true,
+              tipo,
+              id,
+              mensagem,
+            };
+          },
+
+          confirmarExclusao() {
+            const { tipo, id } = this.modalDelete;
+            this.modalDelete.show = false;
+
+            if (tipo === "transacao") {
+              this.deletarTransacao(id);
+            } else if (tipo === "investimento") {
+              this.deletarInvestimento(id);
+            }
+          },
+
+          labelCategoria(valor) {
+            const todasCategorias = [
+              ...this.categoriasReceita,
+              ...this.categoriasDespesa,
+            ];
+            const encontrada = todasCategorias.find((c) => c.value === valor);
+            return encontrada ? encontrada.label : valor;
+          },
+
+          async atualizarTudo() {
+            await this.obtemTransacoes();
+            await this.obtemInvestimentos();
+            this.mostrarSnackbar("Dados atualizados");
+          },
+        },
+
+        computed: {
+          categorias() {
+            return this.form.tipo === "receita"
+              ? this.categoriasReceita
+              : this.categoriasDespesa;
+          },
+
+          totalReceitas() {
+            return this.transacoes
+              .filter((t) => t.tipo === "receita")
+              .reduce((soma, t) => soma + t.valor, 0);
+          },
+
+          totalDespesas() {
+            return this.transacoes
+              .filter((t) => t.tipo === "despesa")
+              .reduce((soma, t) => soma + t.valor, 0);
+          },
+
+          saldo() {
+            return this.totalReceitas - this.totalDespesas;
+          },
+
+          totalInvestido() {
+            return this.investimentos.reduce(
+              (soma, inv) => soma + inv.valor_investimento,
+              0,
+            );
+          },
+
+          dadosGrafico() {
+            const totais = {};
+
+            this.transacoes
+              .filter((t) => t.tipo === "despesa")
+              .forEach((t) => {
+                totais[t.categoria] = (totais[t.categoria] || 0) + t.valor;
+              });
+
+            const cores = [
+              "#6366f1",
+              "#22c55e",
+              "#f59e0b",
+              "#ef4444",
+              "#3b82f6",
+              "#8b5cf6",
+              "#ec4899",
+              "#14b8a6",
+              "#f97316",
+            ];
+
+            return Object.entries(totais)
+              .sort((a, b) => b[1] - a[1])
+              .map(([categoria, valor], i) => ({
+                label: this.labelCategoria(categoria),
+                value: valor,
+                color: cores[i % cores.length],
+              }));
+          },
+
+          totalDespesasCategoria() {
+            return this.dadosGrafico.reduce(
+              (soma, item) => soma + item.value,
+              0,
+            );
+          },
+
+          segmentos() {
+            let offset = 25;
+            return this.dadosGrafico.map((item) => {
+              const dash = (item.value / this.totalDespesasCategoria) * 100;
+              const seg = { dash, gap: 100 - dash, offset, color: item.color };
+              offset -= dash;
+              return seg;
+            });
+          },
+        },
+
+        created() {
+          this.obtemTransacoes();
+          this.obtemInvestimentos();
+        },
+
+        watch: {
+          "form.tipo"() {
+            this.form.categoria = "";
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
