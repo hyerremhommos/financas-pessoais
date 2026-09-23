@@ -34,3 +34,5 @@ Acesse http://localhost:3000
 ├── front/              # interface (Vue 2 + Vuetify)
 └── index.ts            # ponto de entrada
 ```
+
+<img width="1916" height="688" alt="image" src="https://github.com/user-attachments/assets/934a0d19-cacc-4952-bbac-a3b584472b00" />
